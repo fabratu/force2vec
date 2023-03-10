@@ -1,3 +1,5 @@
+#include <mpi.h>
+
 #include "algorithms.h"
 #include "simd.h"
 
@@ -651,105 +653,352 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNS(INDEXTYPE ITERATIONS, INDEXTYPE NU
         return result;
 }
 
-vector<VALUETYPE> algorithms::AlgoForce2VecNSBS(INDEXTYPE ITERATIONS, INDEXTYPE NUMOFTHREADS, INDEXTYPE BATCHSIZE, INDEXTYPE ns, VALUETYPE lr){
-        INDEXTYPE LOOP = 0;
-        VALUETYPE STEP = lr, EPS = 0.00001;
-        double start, end;
-	double loglike0, loglike;
-        vector<VALUETYPE> result;
-        vector<INDEXTYPE> indices;
-	vector<INDEXTYPE> nsamples;
-	VALUETYPE *samples;
-	samples = static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[DIM * ns * BATCHSIZE])));
-        for(INDEXTYPE i = 0; i < graph.rows; i++) indices.push_back(i);
-	for(INDEXTYPE i = 0; i < graph.rows; i++) nsamples.push_back(i);
-        omp_set_num_threads(NUMOFTHREADS);
-        start = omp_get_wtime();
-        randInitF();
-        INDEXTYPE NUMSIZE = min(BATCHSIZE, graph.rows);
-        VALUETYPE *prevCoordinates;
-        prevCoordinates = static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[NUMSIZE * DIM])));
-	for(INDEXTYPE i = 0; i < NUMSIZE; i += 1){
-		INDEXTYPE IDIM = i*DIM;
-                for(INDEXTYPE d = 0; d < this->DIM; d++){
-                        prevCoordinates[IDIM + d] = 0;
-                }
-        }
-	loglike0 = loglike = numeric_limits<double>::max();
-        while(LOOP < ITERATIONS){
-		loglike0 = loglike;
-		loglike = 0;
-		for(INDEXTYPE b = 0; b < (int)ceil( 1.0 * graph.rows / BATCHSIZE); b += 1){
-                        INDEXTYPE baseindex = b * BATCHSIZE * DIM;
-			
-			//#pragma omp parallel for schedule(static)		
-			for(INDEXTYPE s = 0; s < ns * BATCHSIZE; s++){
-				int rindex = randIndex(graph.rows-1, 0);
-				int randombaseindex = rindex * DIM;
-				int sindex = s * DIM;
-				for(INDEXTYPE d = 0; d < DIM; d++){
-					samples[sindex + d] = nCoordinates[randombaseindex + d];
-				}
-			}
-			#pragma omp parallel for schedule(static)
-                        for(INDEXTYPE i = b * BATCHSIZE; i < (b + 1) * BATCHSIZE; i += 1){
-                                if(i >= graph.rows) continue;
-                                VALUETYPE forceDiff[DIM];
-				INDEXTYPE iindex = i*DIM;
-				INDEXTYPE bindex = i * DIM;
-				INDEXTYPE degree = graph.rowptr[i+1] - graph.rowptr[i];
-				#pragma forceinline
-                                #pragma omp simd
-                                for(INDEXTYPE j = graph.rowptr[i]; j < graph.rowptr[i+1]; j += 1){
-                                        VALUETYPE attrc = 0;
-                                        INDEXTYPE colidj = graph.colids[j];
-                                        INDEXTYPE jindex = colidj*DIM;
+vector<VALUETYPE> algorithms::AlgoForce2VecNSD(INDEXTYPE ITERATIONS, INDEXTYPE NUMOFTHREADS, INDEXTYPE BATCHSIZE, INDEXTYPE ns, VALUETYPE lr){        
+        int myRank, numProcs;
+        
+        MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+        MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
-                                        for(INDEXTYPE d = 0; d < this->DIM; d++){
-                                                forceDiff[d] = nCoordinates[iindex + d] - nCoordinates[jindex + d];
-                                                attrc += forceDiff[d] * forceDiff[d];
-                                        }
-					loglike += log(1 + attrc);
-                                        VALUETYPE d1 = -2.0 / (1.0 + attrc);
-                                        for(INDEXTYPE d = 0; d < this->DIM; d++){
-                                                forceDiff[d] = scale(forceDiff[d] * d1);
-                                                prevCoordinates[bindex - baseindex + d] += (STEP) * forceDiff[d];
-                                        }
-                                }
-				INDEXTYPE nsamplebase = i - b * BATCHSIZE;
-                                for(INDEXTYPE j = nsamplebase; j < nsamplebase + ns; j += 1){
-                                        VALUETYPE repuls = 0;
-                                        INDEXTYPE jindex = j * DIM;
-                                        for(INDEXTYPE d = 0; d < this->DIM; d++){
-                                                forceDiff[d] = this->nCoordinates[iindex + d] - samples[jindex + d];
-                                                repuls += forceDiff[d] * forceDiff[d];
-                                        }
-					loglike -= log(0.000001+repuls) - log(1+repuls);
-					VALUETYPE d1 = 2.0 / ((repuls) * (1.0 + repuls));
-                                        for(INDEXTYPE d = 0; d < this->DIM; d++){
-                                                forceDiff[d] = scale(forceDiff[d] * d1);
-                                                prevCoordinates[bindex - baseindex + d] += (STEP) * forceDiff[d];
-                                        }
-                                }
-                        }
-                        for(INDEXTYPE i = b * BATCHSIZE; i < (b + 1) * BATCHSIZE; i += 1){
-                                if(i >= graph.rows) break;
-				INDEXTYPE iindex = i * DIM;
-				INDEXTYPE bindex = i * DIM;
-				#pragma omp simd
-                                for(INDEXTYPE d = 0; d < this->DIM; d++){
-                                        this->nCoordinates[iindex + d] += prevCoordinates[bindex - baseindex + d];
-					prevCoordinates[bindex - baseindex + d] = 0;
-                                }
+        MPI_Status status;
+
+        INDEXTYPE LOOP = 0;
+        INDEXTYPE numWorker = numProcs - 1;
+        INDEXTYPE batchsizePerWorker = BATCHSIZE / numWorker;
+
+        if (myRank == 0) {     
+                char processor_name[MPI_MAX_PROCESSOR_NAME];
+                int name_len;
+                MPI_Get_processor_name(processor_name, &name_len);
+
+                cout << "My name: " << string(processor_name) << " My Rank: " << rank << endl;
+
+                VALUETYPE STEP = lr, EPS = 0.00001;
+                double start, end;
+                double loglike0, loglike;
+                vector<VALUETYPE> result;
+                vector<INDEXTYPE> indices;
+                vector<INDEXTYPE> nsamples;
+	        VALUETYPE *samples;
+	        samples = static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[DIM * ns])));
+                for(INDEXTYPE i = 0; i < graph.rows; i++) indices.push_back(i);
+                for(INDEXTYPE i = 0; i < graph.rows; i++) nsamples.push_back(i);
+                omp_set_num_threads(NUMOFTHREADS);
+                start = omp_get_wtime();
+                randInitF();
+                INDEXTYPE NUMSIZE = min(BATCHSIZE, graph.rows);
+                VALUETYPE *prevCoordinates;
+                prevCoordinates = static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[NUMSIZE * DIM])));
+                for(INDEXTYPE i = 0; i < NUMSIZE; i += 1){
+                        INDEXTYPE IDIM = i*DIM;
+                        for(INDEXTYPE d = 0; d < this->DIM; d++){
+                                prevCoordinates[IDIM + d] = 0;
                         }
                 }
-		LOOP++;
-	}
-	end = omp_get_wtime();
-        cout << "Force2Vec Parallel Wall time required (with BS negative samples):" << end - start << " seconds" << endl;
-        result.push_back(end - start);
-        writeToFile("F2VNS"+ to_string(BATCHSIZE)+"D" + to_string(this->DIM)+"IT" + to_string(LOOP)+"NS"+to_string(ns));
-        return result;
+                loglike0 = loglike = numeric_limits<double>::max();
+                
+                INDEXTYPE numBatches = (int)ceil( 1.0 * graph.rows / BATCHSIZE);
+                MPI_Request requests[numWorker];
+
+                // In each iteration the batches are randomly populated with nodes. Therefore communication arrays have
+                // to be computed for each iteration again.
+                while(LOOP < ITERATIONS){
+                        random_shuffle(indices.begin(), indices.end());
+
+                        loglike0 = loglike;
+                        loglike = 0;
+
+                        // Precompute neighborhood sizes per worker per iteration
+                        INDEXTYPE *neighborSizes;
+                        neighborSizes = static_cast<INDEXTYPE *> (::operator new (sizeof(INDEXTYPE[numBatches * numWorker])));
+                        for(INDEXTYPE b = 0; b < (int)ceil( 1.0 * graph.rows / BATCHSIZE); b += 1){
+                                INDEXTYPE workerIndex = 0;
+                                for(INDEXTYPE i = b * BATCHSIZE; i < (b + 1) * BATCHSIZE; i += batchsizePerWorker) {
+                                        neighborSizes[numWorker * b + workerIndex] = 0;
+                                        for(INDEXTYPE j = i; j < i + batchsizePerWorker; j++) {
+                                                if(j >= graph.rows) break;
+                                                neighborSizes[numWorker * b + workerIndex] += (graph.rowptr[indices[j]+1] - graph.rowptr[indices[j]]);
+                                        }
+                                        workerIndex++;
+                                }
+                        }
+                        cout << "Iteration: " << LOOP << " Num worker: " << numWorker << " Num batches: " << numBatches << " Batch size: " << BATCHSIZE << " Batch size per worker: " << batchsizePerWorker << " Num rows: " << graph.rows << endl;
+
+                        for(INDEXTYPE b = 0; b < (int)ceil( 1.0 * graph.rows / BATCHSIZE); b += 1){
+                                INDEXTYPE baseindex = b * BATCHSIZE * DIM;
+                                
+                                // UNUSED pragma: #pragma omp parallel for schedule(static)
+                                // Negative samples (each batch own independent sample)
+                                // rindex: node id
+                                // randombaseindex: first entry of feature coord-vector of node id
+                                // sindex: first entry in samples coord-vector of sample s
+                                for(INDEXTYPE s = 0; s < ns; s++){
+                                        int rindex = randIndex(graph.rows-1, 0);
+                                        int randombaseindex = rindex * DIM;
+                                        int sindex = s * DIM;
+                                        for(INDEXTYPE d = 0; d < DIM; d++){
+                                                samples[sindex + d] = nCoordinates[randombaseindex + d];
+                                        }
+                                }
+                                INDEXTYPE workerIndex = 0;
+                                VALUETYPE *workerList[numWorker];
+ 
+                                // Sendphase for batch
+                                for(INDEXTYPE i = b * BATCHSIZE; i < (b + 1) * BATCHSIZE; i += batchsizePerWorker) {
+                                        
+                                        // Create batch ID, sample, node and neighbor coord list per worker (PW)
+                                        //VALUETYPE *workerList;
+                                        INDEXTYPE wLength = DIM * ns + batchsizePerWorker * (DIM + 1) + neighborSizes[numWorker * b + workerIndex] * DIM;
+                                        //workerList = static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[wLength])));
+                                        workerList[workerIndex] = (VALUETYPE*)malloc(wLength * sizeof(VALUETYPE));
+                                        memset(workerList[workerIndex], 0, sizeof(workerList[workerIndex]));
+
+                                        // Fill worker payload
+                                        // 1. Samples
+                                        for(INDEXTYPE j = 0; j < ns * DIM; j++){
+                                                workerList[workerIndex][j] = samples[j];
+                                        }
+
+                                        // 2. Nodes + neighborhood size + neighborhood
+                                        INDEXTYPE offset = ns * DIM;
+                                        for(INDEXTYPE j = i; j < i + batchsizePerWorker; j++) {
+                                                if(j >= graph.rows) break;
+                                                
+                                                // Node
+                                                for(INDEXTYPE d = 0; d < DIM; d++) {
+                                                        workerList[workerIndex][offset + d] = nCoordinates[indices[j] + d];
+                                                }
+                                                offset += DIM;
+
+                                                // Neighborhood size
+                                                workerList[workerIndex][offset] = static_cast<VALUETYPE>((graph.rowptr[indices[j]+1] - graph.rowptr[indices[j]]));
+                                                offset++;
+
+                                                // Neighborhood
+                                                for(INDEXTYPE k = graph.rowptr[indices[j]]; k < graph.rowptr[indices[j]+1]; k++){
+                                                        INDEXTYPE colidk = graph.colids[k];
+                                                        INDEXTYPE kindex = colidk*DIM;
+                                                        for(INDEXTYPE d = 0; d < this->DIM; d++){
+                                                                workerList[workerIndex][offset + d] = nCoordinates[kindex + d];
+                                                        }
+                                                        offset += DIM;
+                                                }
+                                        }
+                                        
+                                        // Send payload to worker
+                                        uint32_t tLoop = static_cast<uint32_t>(LOOP);
+                                        uint32_t tWorker = static_cast<uint32_t>(workerIndex+1);
+                                        uint64_t tag = ((uint64_t)tLoop) << 32 | tWorker;
+                                        cout << "Send " << wLength << " data of type double in to " << (workerIndex + 1) << " in loop " << LOOP << endl;
+                                        MPI_Isend(&workerList[workerIndex], wLength, MPI_FLOAT, workerIndex+1, 1, MPI_COMM_WORLD, &requests[workerIndex]);
+                                        //MPI_Send(&workerList, wLength, MPI_FLOAT, workerIndex+1, 1, MPI_COMM_WORLD);
+                                        workerIndex++;
+                                }
+
+                                MPI_Waitall(numWorker, requests, MPI_STATUSES_IGNORE);
+                                for(INDEXTYPE i = 0; i < numWorker; i++) {
+                                        free(workerList[i]);
+                                }
+
+                                // Recvphase for batch
+                                int recvChunks = 0;
+                                // do {
+                                //         MPI_Status status;
+
+                                //         int dataFlag = 0;
+                                //         MPI_Iprobe(MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &dataFlag, &status);
+
+                                //         if(dataFlag) {
+                                //                 recvChunks++;
+                                //         }
+                                // } while (recvChunks < numWorker);
+
+                                cout << "Processing batch " << b << " completed." << endl;
+
+                                // // Calculate forces
+                                // #pragma omp parallel for schedule(static)
+                                // for(INDEXTYPE i = b * BATCHSIZE; i < (b + 1) * BATCHSIZE; i += 1){
+
+                                //         // Why is this line here?
+                                //         if(i >= graph.rows) continue;
+                                //         VALUETYPE forceDiff[DIM];
+                                //         INDEXTYPE iindex = i*DIM;
+                                //         INDEXTYPE bindex = i * DIM;
+                                //         INDEXTYPE degree = graph.rowptr[i+1] - graph.rowptr[i];
+                                //         #pragma forceinline
+                                //         #pragma omp simd
+                                //         for(INDEXTYPE j = graph.rowptr[i]; j < graph.rowptr[i+1]; j += 1){
+                                //                 VALUETYPE attrc = 0;
+                                //                 INDEXTYPE colidj = graph.colids[j];
+                                //                 INDEXTYPE jindex = colidj*DIM;
+
+                                //                 for(INDEXTYPE d = 0; d < this->DIM; d++){
+                                //                         forceDiff[d] = nCoordinates[iindex + d] - nCoordinates[jindex + d];
+                                //                         attrc += forceDiff[d] * forceDiff[d];
+                                //                 }
+                                //                 loglike += log(1 + attrc);
+                                //                 VALUETYPE d1 = -2.0 / (1.0 + attrc);
+                                //                 for(INDEXTYPE d = 0; d < this->DIM; d++){
+                                //                         forceDiff[d] = scale(forceDiff[d] * d1);
+                                //                         prevCoordinates[bindex - baseindex + d] += (STEP) * forceDiff[d];
+                                //                 }
+                                //         }
+                                //         for(INDEXTYPE j = 0; j < ns; j += 1){
+                                //                 VALUETYPE repuls = 0;
+                                //                 INDEXTYPE jindex = j * DIM;
+                                //                 for(INDEXTYPE d = 0; d < this->DIM; d++){
+                                //                         forceDiff[d] = this->nCoordinates[iindex + d] - samples[jindex + d];
+                                //                         repuls += forceDiff[d] * forceDiff[d];
+                                //                 }
+                                //                 loglike -= log(0.000001+repuls) - log(1+repuls);
+                                //                 VALUETYPE d1 = 2.0 / ((repuls) * (1.0 + repuls));
+                                //                 for(INDEXTYPE d = 0; d < this->DIM; d++){
+                                //                         forceDiff[d] = scale(forceDiff[d] * d1);
+                                //                         prevCoordinates[bindex - baseindex + d] += (STEP) * forceDiff[d];
+                                //                 }
+                                //         }
+                                // }
+                                // for(INDEXTYPE i = b * BATCHSIZE; i < (b + 1) * BATCHSIZE; i += 1){
+                                //         if(i >= graph.rows) break;
+                                //         INDEXTYPE iindex = i * DIM;
+                                //         INDEXTYPE bindex = i * DIM;
+                                //         #pragma omp simd
+                                //         for(INDEXTYPE d = 0; d < this->DIM; d++){
+                                //                 this->nCoordinates[iindex + d] += prevCoordinates[bindex - baseindex + d];
+                                //                 prevCoordinates[bindex - baseindex + d] = 0;
+                                //         }
+                                // }
+                        }
+                        LOOP++;
+                }
+                end = omp_get_wtime();
+
+                //MPI_Waitall(numBatches * numWorker, requests, MPI_STATUSES_IGNORE);
+                for(int dest = 1; dest < numProcs; dest++) {
+                        // Send exit tag (0) to everyone
+                        MPI_Request request;
+                        MPI_Isend(NULL, 0 , MPI_FLOAT, dest, 0, MPI_COMM_WORLD, &request);
+                }
+                cout << "Force2Vec Parallel Wall time required (with BS negative samples):" << end - start << " seconds" << endl;
+                result.push_back(end - start);
+                writeToFile("F2VNS"+ to_string(BATCHSIZE)+"D" + to_string(this->DIM)+"IT" + to_string(LOOP)+"NS"+to_string(ns));
+                return result;
+        } else {
+                int messageID = 0;
+
+                // TODO: Send number of batches to worker at first
+                while(messageID < 8 * ITERATIONS) {
+                        int computeFlag = 0;
+
+                        while(!computeFlag) {
+                                MPI_Iprobe(0, 1, MPI_COMM_WORLD, &computeFlag, &status);
+                        }
+
+                        int wLength = 0;
+                        MPI_Get_count(&status, MPI_INT, &wLength);
+                        cout << "Rank " << myRank << " received " << wLength << " data." << endl;
+
+
+                        VALUETYPE *workerList = (VALUETYPE*)malloc(wLength * sizeof(VALUETYPE));
+                        MPI_Recv(&workerList, wLength, MPI_FLOAT, 0, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                        free(workerList);
+                        messageID++;
+                }
+                return {};
+        }
+                // while(recv) {
+                //         uint32_t tLoop = static_cast<uint32_t>(LOOP);
+                //         uint32_t tDest = static_cast<uint32_t>(myRank);
+                //         uint64_t tag = ((uint64_t)tLoop) << 32 | tDest;
+                //         MPI_Status status;
+
+                //         int computeFlag;
+                //         //MPI_Iprobe(0, tag, MPI_COMM_WORLD, &computeFlag, &status);
+                //         MPI_Iprobe(0, 1, MPI_COMM_WORLD, &computeFlag, &status);
+
+                //         if(computeFlag) {
+
+                //                 int wLength;
+                //                 MPI_Get_count(&status, MPI_INT, &wLength);
+
+                //                 VALUETYPE *workerList = (VALUETYPE*)malloc(wLength * sizeof(VALUETYPE));
+                //                 //VALUETYPE *workerList;
+                //                 //workerList = static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[wLength])));
+
+                //                 MPI_Recv(&workerList, wLength, MPI_FLOAT, 0, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                //                 cout << "MessageID: " << messageID << ": Rank " << myRank << " received " << wLength << " data." << endl;
+                //                 messageID++;
+
+                //                 // // Create result vector
+                //                 VALUETYPE* gradientList = (VALUETYPE*) malloc(batchsizePerWorker * DIM * sizeof(VALUETYPE));
+                //                 // VALUETYPE *gradientList;
+                //                 // gradientList = static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[batchsizePerWorker * DIM])));
+                //                 INDEXTYPE offset = ns * DIM + 1;
+                //                 //INDEXTYPE batchID = static_cast<INDEXTYPE>(workerList[0]);
+
+                //                 //cout << "Rank " << myRank << " working on batch " << batchID << endl;
+
+                //                 // // Iterate over messages and process every node
+                //                 // #pragma omp parallel for schedule(static)
+                //                 // for(INDEXTYPE i = 0; i < batchsizePerWorker; i++) {
+
+                //                 //         // Populate node u
+                //                 //         VALUETYPE u[DIM];
+                //                 //         for (INDEXTYPE d = 0; d < DIM; d++) {
+                //                 //                 u[d] = workerList[offset + d];
+                //                 //         }
+                //                 //         offset += DIM;
+
+                //                 //         // Number of neighbors
+                //                 //         INDEXTYPE numNeighbors = static_cast<INDEXTYPE>(workerList[offset]);
+                //                 //         offset++;
+
+                //                 //         cout << "Node " << i << " has " << numNeighbors << " neighbors." << endl;
+
+                //                 //         // Iterate over neighbors
+                //                 //         for(INDEXTYPE d = 0; d < DIM; d++) {
+                //                 //                 gradientList[i * DIM + d] = 0;
+                //                 //         }
+                //                 //         VALUETYPE attrc = 0;
+                //                 //         for(INDEXTYPE j = 0; j < numNeighbors; j++) {
+                //                 //                 // Attractive forces
+                //                 //                 for(INDEXTYPE d = 0; d < DIM; d++){
+                //                 //                         gradientList[i * DIM + d] = u[d] - workerList[offset + d];
+                //                 //                         attrc += gradientList[i * DIM + d] * gradientList[i * DIM + d];
+                //                 //                 }
+                //                 //                 VALUETYPE d1 = -2.0 / (1.0 + attrc);
+                //                 //                 for(INDEXTYPE d = 0; d < DIM; d++){
+                //                 //                         gradientList[i * DIM + d] = scale(gradientList[i * DIM + d] * d1);
+                //                 //                 }
+
+                //                 //                 // Repulsive forces
+                //                 //                 for(INDEXTYPE s = 0; s < ns; s += 1){
+                //                 //                         VALUETYPE forceDiff[DIM];
+                //                 //                         VALUETYPE repuls = 0;
+                //                 //                         for(INDEXTYPE d = 0; d < DIM; d++){
+                //                 //                                 forceDiff[d] = u[d] - workerList[s * DIM + d];
+                //                 //                                 repuls += forceDiff[d] * forceDiff[d];
+                //                 //                         }
+                //                 //                         VALUETYPE d1 = 2.0 / ((repuls) * (1.0 + repuls));
+                //                 //                         for(INDEXTYPE d = 0; d < DIM; d++){
+                //                 //                                 gradientList[i * DIM + d] = scale(forceDiff[d] * d1);
+                //                 //                         }
+                //                 //                 }
+                //                 //                 offset += DIM;
+                //                 //         }
+                //                 // }
+
+                //                 MPI_Send(&gradientList, DIM, MPI_FLOAT, 0, 1, MPI_COMM_WORLD);
+                //                 free(workerList);
+                //                 free(gradientList);
+                //         }
+
+                //         int exitFlag;
+                //         MPI_Iprobe(0, 0, MPI_COMM_WORLD, &exitFlag, MPI_STATUS_IGNORE);
+                //         if(exitFlag) {
+                //                 cout << myRank << " received terminal signal." << endl;
+                //                 recv = false;
+                //         }
+                // }
 }
 
 VALUETYPE *sm_table;

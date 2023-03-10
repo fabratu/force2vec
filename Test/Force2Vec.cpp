@@ -1,3 +1,4 @@
+#include <mpi.h>
 #include <omp.h>
 #include <stdio.h>
 #include <iostream>
@@ -114,90 +115,115 @@ void TestAlgorithms(int argc, char *argv[]){
 			exit(1);
 		}
 	}
+
 	if(inputfile.size() == 0){
 		printf("Valid input file needed!...\n");
 		exit(1);
 	}
-	CSR<INDEXTYPE, VALUETYPE> A_csr;
+
+	int rank, numProcs;
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &numProcs);
+
+	vector<VALUETYPE> outputvec;
+	algorithms algo = algorithms(inputfile, outputfile, dim, gamma, batchsize * (numProcs - 1), rank);
+
+	srand(1);
+	if(rank == 0) {
+		CSR<INDEXTYPE, VALUETYPE> A_csr;
         SetInputMatricesAsCSR(A_csr, inputfile);
         A_csr.Sorted();
-	vector<VALUETYPE> outputvec;
-	algorithms algo = algorithms(A_csr, inputfile, outputfile, dim, gamma, batchsize);
-	srand(1);
-	A_csr.make_empty();
-	cout << "Running: " << algoname << endl;
-	if(option == 1){
-		outputvec = algo.AlgoForce2Vec(iterations, numberOfThreads, batchsize);
-		//outputvec = algo.AlgoForce2VecBR(iterations, numberOfThreads, batchsize);
-	}else if(option == 2){
-		outputvec = algo.AlgoForce2VecFR(iterations, numberOfThreads, batchsize, nsamples, lr);
-	}else if(option == 3){
-		outputvec = algo.AlgoForce2VecLL(iterations, numberOfThreads, batchsize, nsamples, lr);
-	}else if(option == 4){
-		outputvec = algo.AlgoForce2VecFA(iterations, numberOfThreads, batchsize, nsamples, lr);
-	}else if(option == 5){
-		if(bs == 0)
-		outputvec = algo.AlgoForce2VecNS(iterations, numberOfThreads, batchsize, nsamples, lr);
-		else
-		outputvec = algo.AlgoForce2VecNSBS(iterations, numberOfThreads, batchsize, nsamples, lr);
-	}else if(option == 6){
-		if(bs == 0)
-                outputvec = algo.AlgoForce2VecNSRW(iterations, numberOfThreads, batchsize, nsamples, lr);
-        	else
-		outputvec = algo.AlgoForce2VecNSRWBS(iterations, numberOfThreads, batchsize, nsamples, lr);
-	}else if(option == 7){
-                outputvec = algo.AlgoForce2VecNSRWEFF(iterations, numberOfThreads, batchsize, nsamples, lr);
-        }
+		algo.initInputFile(A_csr);
+		outputvec = algo.AlgoForce2VecNSD(iterations, numberOfThreads, batchsize * (numProcs - 1), nsamples, lr);
+	} else {
+		algo.AlgoForce2VecNSD(iterations, numberOfThreads, batchsize, nsamples, lr);
+	}
 
-	if(option > 7){
-#ifdef AVX512
-	if(option == 8){
-                outputvec = algo.AlgoForce2VecNS_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
-        }else if(option == 10){
-		if(dim == 128){
-                	outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
-        	}else if(dim == 64){
-			outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
-		}
-	}else if(option == 11){
-		if(dim == 128){
-                	outputvec = algo.AlgoForce2VecNSLB_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
-        	}else if(dim == 64){
-			outputvec =  algo.AlgoForce2VecNSLB_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
-		}
-	}
-	else if(option == 9){
-		if(dim == 64){
-			outputvec = algo.AlgoForce2VecNSRWLB_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
-		}else if(dim == 128){
-                #ifdef SREAL 
-                  outputvec = algo.AlgoForce2VecNSRW_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
-                #else
-                  cout << "Intrinsic code not implemented for double yet!" << endl;  
-                  exit(1);
-                #endif
-		}else{
-		  cout << "Intrinsic code not implemented for various dimensions!" << endl;
-                  exit(1);
-		}
-	}
-#else
-printf("Force2Vec has not been compiled with AVX512...Choose an option from 5 to 8. \n");
-exit(1);
-#endif		
-        }
 	
 	//A_csr.make_empty();
-	string avgfile = "Results.txt";
-        ofstream output;
-       	output.open(avgfile, ofstream::app);
-	output << "Algo:"<< algoname << "\tInit:" << initname << "\tIteration:";
-       	output << iterations << "\tNumofthreads:" << numberOfThreads << "\tBatchSize:" << batchsize << "\tDimension:" << dim << "\tTime(sec.):";
-        output << outputvec[0] << "\t";
-	output << endl;
-	output.close();
+	cout << "Running: " << algoname << endl;
+// 	if(option == 1){
+// 		outputvec = algo.AlgoForce2Vec(iterations, numberOfThreads, batchsize);
+// 		//outputvec = algo.AlgoForce2VecBR(iterations, numberOfThreads, batchsize);
+// 	}else if(option == 2){
+// 		outputvec = algo.AlgoForce2VecFR(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 	}else if(option == 3){
+// 		outputvec = algo.AlgoForce2VecLL(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 	}else if(option == 4){
+// 		outputvec = algo.AlgoForce2VecFA(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 	}else if(option == 5){
+// 		if(bs == 0)
+// 		outputvec = algo.AlgoForce2VecNS(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 		else
+// 		outputvec = algo.AlgoForce2VecNSBS(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 	}else if(option == 6){
+// 		if(bs == 0)
+//                 outputvec = algo.AlgoForce2VecNSRW(iterations, numberOfThreads, batchsize, nsamples, lr);
+//         	else
+// 		outputvec = algo.AlgoForce2VecNSRWBS(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 	}else if(option == 7){
+//                 outputvec = algo.AlgoForce2VecNSRWEFF(iterations, numberOfThreads, batchsize, nsamples, lr);
+//         }
+
+// 	if(option > 7){
+// #ifdef AVX512
+// 	if(option == 8){
+//                 outputvec = algo.AlgoForce2VecNS_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+//         }else if(option == 10){
+// 		if(dim == 128){
+//                 	outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+//         	}else if(dim == 64){
+// 			outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 		}
+// 	}else if(option == 11){
+// 		if(dim == 128){
+//                 	outputvec = algo.AlgoForce2VecNSLB_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+//         	}else if(dim == 64){
+// 			outputvec =  algo.AlgoForce2VecNSLB_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 		}
+// 	}
+// 	else if(option == 9){
+// 		if(dim == 64){
+// 			outputvec = algo.AlgoForce2VecNSRWLB_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+// 		}else if(dim == 128){
+//                 #ifdef SREAL 
+//                   outputvec = algo.AlgoForce2VecNSRW_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+//                 #else
+//                   cout << "Intrinsic code not implemented for double yet!" << endl;  
+//                   exit(1);
+//                 #endif
+// 		}else{
+// 		  cout << "Intrinsic code not implemented for various dimensions!" << endl;
+//                   exit(1);
+// 		}
+// 	}
+// #else
+// printf("Force2Vec has not been compiled with AVX512...Choose an option from 1 to 7. \n");
+// exit(1);
+// #endif		
+//         }
+	
+	//A_csr.make_empty();
+	
+	if(rank == 0) {
+		string avgfile = "Results.txt";
+			ofstream output;
+			output.open(avgfile, ofstream::app);
+		output << "Algo:"<< algoname << "\tInit:" << initname << "\tIteration:";
+			output << iterations << "\tNumofthreads:" << numberOfThreads << "\tBatchSize:" << batchsize << "\tDimension:" << dim << "\tTime(sec.):";
+			output << outputvec[0] << "\t";
+		output << endl;
+		output.close();
+	}
 }
 int main(int argc, char* argv[]){
+	// Iinitialize MPI
+	MPI_Init(NULL, NULL);
+
+	// Run algorithm on every process
 	TestAlgorithms(argc, argv);
-        return 0;
+
+	// Finalize MPI
+	MPI_Finalize();
+    return 0;
 }

@@ -4,7 +4,7 @@ UNITTEST = ./Test
 BIN = ./bin
 INCDIR = -I$(Force2Vec) -I$(SAMPLE) -I$(UNITTEST)
 
-COMPILER = g++
+COMPILER = mpicxx
 
 FLAGS = -g -fomit-frame-pointer -ffast-math -fopenmp -O3 -std=c++11 -DCPP 
 

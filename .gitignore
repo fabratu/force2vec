@@ -1,0 +1,4 @@
+bin/*
+hosts
+datasets/output
+Results.txt
