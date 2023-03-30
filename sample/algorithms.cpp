@@ -1060,7 +1060,7 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNSRWBS(INDEXTYPE ITERATIONS, INDEXTYP
 }
 
 
-vector<VALUETYPE> algorithms::AlgoForce2VecNSRWEFF(INDEXTYPE ITERATIONS, INDEXTYPE NUMOFTHREADS, INDEXTYPE BATCHSIZE, INDEXTYPE ns, VALUETYPE lr){
+vector<VALUETYPE> algorithms::AlgoForce2VecNSRWEFF(INDEXTYPE ITERATIONS, INDEXTYPE NUMOFTHREADS, INDEXTYPE BATCHSIZE, INDEXTYPE ns, VALUETYPE lr, INDEXTYPE nested){
         INDEXTYPE LOOP = 0;
         VALUETYPE STEP = lr, EPS = 0.00001;
         double start, end;
@@ -1117,6 +1117,7 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNSRWEFF(INDEXTYPE ITERATIONS, INDEXTY
 			
         	}
 		//printf("Walk generation: walk: %d\n", walksamples[0]);
+                #pragma omp parallel for if(nested == 1)
                 for(INDEXTYPE b = 0; b < (int)ceil( 1.0 * graph.rows / BATCHSIZE); b += 1){
                         INDEXTYPE baseindex = b * BATCHSIZE * DIM;
                         #pragma omp simd
@@ -2055,7 +2056,8 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNSRWEFF_SREAL_D128_AVXZ
  INDEXTYPE NUMOFTHREADS, 
  INDEXTYPE BATCHSIZE, 
  INDEXTYPE ns, 
- VALUETYPE lr
+ VALUETYPE lr,
+ INDEXTYPE wl
  )
 {
    INDEXTYPE LOOP = 0;
@@ -2069,7 +2071,7 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNSRWEFF_SREAL_D128_AVXZ
    
    VALUETYPE *samples;
    INDEXTYPE *walksamples; 
-   INDEXTYPE WALKLENGTH = 5;
+   INDEXTYPE WALKLENGTH = wl;
    samples = 
       static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[DIM * ns])));
    walksamples = static_cast<INDEXTYPE *> (::operator new (sizeof(INDEXTYPE[WALKLENGTH * graph.rows])));
@@ -3693,7 +3695,8 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNSRWEFF_SREAL_D64_AVXZ
  INDEXTYPE NUMOFTHREADS, 
  INDEXTYPE BATCHSIZE, 
  INDEXTYPE ns, 
- VALUETYPE lr
+ VALUETYPE lr,
+ INDEXTYPE wl
  )
 {
    INDEXTYPE LOOP = 0;
@@ -3707,7 +3710,7 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNSRWEFF_SREAL_D64_AVXZ
    
    VALUETYPE *samples;
    INDEXTYPE *walksamples; 
-   INDEXTYPE WALKLENGTH = 5;
+   INDEXTYPE WALKLENGTH = wl;
    samples = 
       static_cast<VALUETYPE *> (::operator new (sizeof(VALUETYPE[DIM * ns])));
    walksamples = static_cast<INDEXTYPE *> (::operator new (sizeof(INDEXTYPE[WALKLENGTH * graph.rows])));

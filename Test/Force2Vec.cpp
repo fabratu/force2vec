@@ -51,6 +51,9 @@ void TestAlgorithms(int argc, char *argv[]){
 	INDEXTYPE batchsize = 384, iterations = 1200, numberOfThreads = omp_get_max_threads(), dim = 128, option = 5, nsamples = 5;
 	string inputfile = "", initfile = "", outputfile = "", algoname = "Force2Vec:t-distribution with negative sampling", initname = "RAND";
 	INDEXTYPE bs = 0;
+	INDEXTYPE nested = 0;
+	// Length of random walk (not used by all algorithms)
+	INDEXTYPE wl = 5;
 	for(int p = 0; p < argc; p++){
 		if(strcmp(argv[p], "-input") == 0){
 			inputfile = argv[p+1];
@@ -75,6 +78,9 @@ void TestAlgorithms(int argc, char *argv[]){
 		}
 		else if(strcmp(argv[p], "-bs") == 0){
 			bs = atoi(argv[p+1]);
+		}
+		else if(strcmp(argv[p], "-wl") == 0) {
+			wl = atoi(argv[p+1]);
 		}
 		else if(strcmp(argv[p], "-option") == 0){
                         option = atoi(argv[p+1]);
@@ -108,6 +114,9 @@ void TestAlgorithms(int argc, char *argv[]){
 		}
 		else if(strcmp(argv[p], "-nsamples") == 0){
 			nsamples = atoi(argv[p+1]);
+		}
+		else if(strcmp(argv[p], "-nested") == 0) {
+			nested = 1;
 		}
 		else if(strcmp(argv[p], "-h") == 0){
 			helpmessage();
@@ -146,7 +155,7 @@ void TestAlgorithms(int argc, char *argv[]){
         	else
 		outputvec = algo.AlgoForce2VecNSRWBS(iterations, numberOfThreads, batchsize, nsamples, lr);
 	}else if(option == 7){
-                outputvec = algo.AlgoForce2VecNSRWEFF(iterations, numberOfThreads, batchsize, nsamples, lr);
+                outputvec = algo.AlgoForce2VecNSRWEFF(iterations, numberOfThreads, batchsize, nsamples, lr, nested);
         }
 
 	if(option > 7){
@@ -155,9 +164,9 @@ void TestAlgorithms(int argc, char *argv[]){
                 outputvec = algo.AlgoForce2VecNS_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
         }else if(option == 10){
 		if(dim == 128){
-                	outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+                	outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D128_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr, wl);
         	}else if(dim == 64){
-			outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr);
+			outputvec = algo.AlgoForce2VecNSRWEFF_SREAL_D64_AVXZ(iterations, numberOfThreads, batchsize, nsamples, lr, wl);
 		}
 	}else if(option == 11){
 		if(dim == 128){
