@@ -1583,7 +1583,7 @@ vector<VALUETYPE> algorithms::AlgoForce2VecNS_SREAL_D128_AVXZ
  
                for(INDEXTYPE d = 0; d < this->DIM; d++)
                {
-			forceDiff[d] = Xj[d] - Xi[d];
+			forceDiff[d] = Xi[d] - Xj[d];
 			attrc += forceDiff[d] * forceDiff[d];
 		}
 	       VALUETYPE d1 = -2.0 / (1.0 + attrc);
