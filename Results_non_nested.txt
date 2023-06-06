@@ -1,0 +1,11 @@
+Algo:Force2Vec:t-distribution with negative sampling	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.00369312	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.112358	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.00254567	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.00248112	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.0965468	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.0946033	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.101698	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.0933672	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.104243	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.10153	
+Algo:Force2Vec:sigmoid based random-walk	Init:RAND	Iteration:5	Numofthreads:32	BatchSize:192	Dimension:2	Time(sec.):0.100163	

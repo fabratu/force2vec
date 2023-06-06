@@ -1,0 +1,294 @@
+experiments:
+  - name: force2vec
+    args: ['./bin/Force2Vec', '-input', '@INSTANCE@', '-output', '@OUTPUT:embd@', '-threads', '24', '@EXTRA_ARGS@']
+    stdout: 'out'
+    output:
+      extensions: ['embd']
+    procs_per_node: 24
+    num_threads: 24
+  - name: force2vec-RW
+    args: ['./bin/Force2Vec', '-input', '@INSTANCE@', '-output', '@OUTPUT:embd@', '-threads', '24', '-option', '10', '-iter', '1000', '@EXTRA_ARGS@']
+    stdout: 'out'
+    output:
+      extensions: ['embd']
+    procs_per_node: 24
+    num_threads: 24
+  - name: linkpredict-sig-RW
+    args: ['python3', './performancescores/runlinkpredict-simexpal.py', '@INSTANCE@', '1', '@EXTRA_ARGS@', '128']
+    stdout: 'out'
+  - name: nodeclass-sig-RW
+    args: ['python3', './performancescores/runnodeclassclust-simexpal.py', '@INSTANCE@', '1', '@EXTRA_ARGS@']
+    stdout: 'out'
+  - name: nodeclass-tdist
+    args: ['python3', './performancescores/runnodeclassclust-simexpal.py', '@INSTANCE@', '1', '@EXTRA_ARGS@']
+    stdout: 'out'
+instdir: /work/brandtfa/2023/force2vec/fork/force2vec/datasets/input
+instances:
+  - repo: local
+    set: [citeseer, all]
+    items:
+      - citeseer.mtx
+  - repo: local
+    set: [karate, all]
+    items:
+      - karate.mtx
+  - repo: local
+    set: [cora, all]
+    items:
+      - cora.mtx
+  - repo: local
+    set: [flickr, all]
+    items:
+      - flickr.mtx
+  - repo: local
+    set: [pubmed, all]
+    items:
+      - pubmed.mtx
+  - repo: local
+    set: [com-Youtube, all]
+    items:
+      - com-Youtube.mtx
+
+variants:
+  - axis: 'option'
+    items:
+#      - name: 'tdist-ns'
+#        extra_args: ['-option', '5']
+#      - name: 'sigmoid-ns'
+#        extra_args: ['-option', '6']
+#      - name: 'sigmoid-rw'
+#        extra_args: ['-option', '7']
+      - name: 'AVX-tdist-ns'
+        extra_args: ['-option', '8']
+#      - name: 'AVX-sigmoid-ns'
+#        extra_args: ['-option', '9']
+      - name: 'AVX-sigmoid-rw'
+        extra_args: ['-option', '10']
+#      - name: 'AVX-LB-tdist-ns'
+#        extra_args: ['-option', '11']
+  - axis: 'iter'
+    items:
+      - name: 'i500'
+        extra_args: ['-iter', '500']
+      - name: 'i1000'
+        extra_args: ['-iter', '1000']
+      - name: 'i2000'
+        extra_args: ['-iter', '2000']
+      - name: 'i5000'
+        extra_args: ['-iter', '5000']
+  - axis: 'batch'
+    items:
+      - name: 'b256'
+        extra_args: ['-batch', '256']
+      - name: 'b512'
+        extra_args: ['-batch', '512']
+      - name: 'b1024'
+        extra_args: ['-batch', '1024']
+      - name: 'b2048'
+        extra_args: ['-batch', '2048']
+      - name: 'b4096'
+        extra_args: ['-batch', '4096']
+      - name: 'b8192'
+        extra_args: ['-batch', '8192']
+      - name: 'b16384'
+        extra_args: ['-batch', '16384']
+      - name: 'b32768'
+        extra_args: ['-batch', '32768']
+      - name: 'b65536'
+        extra_args: ['-batch', '65536']
+      - name: 'b131072'
+        extra_args: ['-batch', '131072']
+      - name: 'b262144'
+        extra_args: ['-batch', '262144']
+  - axis: 'wl'
+    items:
+      - name: 'w2'
+        extra_args: ['-wl', '2']
+      - name: 'w5'
+        extra_args: ['-wl', '5']
+      - name: 'w10'
+        extra_args: ['-wl', '10']
+      - name: 'w15'
+        extra_args: ['-wl', '15']
+  - axis: 'embeddings'
+    items:
+      - name: 'b65536-citeseer'
+        extra_args: ['output/force2vec-RW~b65536,w15/citeseer.embd']
+      - name: 'b65536-karate'
+        extra_args: ['output/force2vec-RW~b65536,w15/karate.embd']
+      - name: 'b65536-cora'
+        extra_args: ['output/force2vec-RW~b65536,w15/cora.embd']
+      - name: 'b65536-flickr'
+        extra_args: ['output/force2vec-RW~b65536,w15/flickr.embd']
+      - name: 'b65536-pubmed'
+        extra_args: ['output/force2vec-RW~b65536,w15/pubmed.embd']
+      - name: 'b65536-com-Youtube'
+        extra_args: ['output/force2vec-RW~b65536,w15/com-Youtube.embd']
+      - name: 'b131072-citeseer'
+        extra_args: ['output/force2vec-RW~b131072,w15/citeseer.embd']
+      - name: 'b131072-karate'
+        extra_args: ['output/force2vec-RW~b131072,w15/karate.embd']
+      - name: 'b131072-cora'
+        extra_args: ['output/force2vec-RW~b131072,w15/cora.embd']
+      - name: 'b131072-flickr'
+        extra_args: ['output/force2vec-RW~b131072,w15/flickr.embd']
+      - name: 'b131072-pubmed'
+        extra_args: ['output/force2vec-RW~b131072,w15/pubmed.embd']
+      - name: 'b131072-com-Youtube'
+        extra_args: ['output/force2vec-RW~b131072,w15/com-Youtube.embd']
+      - name: 'b262144-citeseer'
+        extra_args: ['output/force2vec-RW~b262144,w15/citeseer.embd']
+      - name: 'b262144-karate'
+        extra_args: ['output/force2vec-RW~b262144,w15/karate.embd']
+      - name: 'b262144-cora'
+        extra_args: ['output/force2vec-RW~b262144,w15/cora.embd']
+      - name: 'b262144-flickr'
+        extra_args: ['output/force2vec-RW~b262144,w15/flickr.embd']
+      - name: 'b262144-pubmed'
+        extra_args: ['output/force2vec-RW~b262144,w15/pubmed.embd']
+      - name: 'b262144-com-Youtube'
+        extra_args: ['output/force2vec-RW~b262144,w15/com-Youtube.embd']
+  - axis: 'nodeclass'
+    items:
+      - name: 'b256-flickr-nc'
+        extra_args: ['output/force2vec-RW~b256,w15/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b4096-flickr-nc'
+        extra_args: ['output/force2vec-RW~b4096,w15/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b65536-citeseer-nc'
+        extra_args: ['output/force2vec-RW~b65536,w15/citeseer.embd', '128', 'datasets/input/citeseer.nodes.labels']
+      - name: 'b65536-cora-nc'
+        extra_args: ['output/force2vec-RW~b65536,w15/cora.embd', '128', 'datasets/input/cora.nodes.labels']
+      - name: 'b65536-flickr-nc'
+        extra_args: ['output/force2vec-RW~b65536,w15/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b65536-pubmed-nc'
+        extra_args: ['output/force2vec-RW~b65536,w15/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b131072-citeseer-nc'
+        extra_args: ['output/force2vec-RW~b131072,w15/citeseer.embd', '128', 'datasets/input/citeseer.nodes.labels']
+      - name: 'b131072-cora-nc'
+        extra_args: ['output/force2vec-RW~b131072,w15/cora.embd', '128', 'datasets/input/cora.nodes.labels']
+      - name: 'b131072-flickr-nc'
+        extra_args: ['output/force2vec-RW~b131072,w15/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b131072-pubmed-nc'
+        extra_args: ['output/force2vec-RW~b131072,w15/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b262144-citeseer-nc'
+        extra_args: ['output/force2vec-RW~b262144,w15/citeseer.embd', '128', 'datasets/input/citeseer.nodes.labels']
+      - name: 'b262144-cora-nc'
+        extra_args: ['output/force2vec-RW~b262144,w15/cora.embd', '128', 'datasets/input/cora.nodes.labels']
+      - name: 'b262144-flickr-nc'
+        extra_args: ['output/force2vec-RW~b262144,w15/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b262144-pubmed-nc'
+        extra_args: ['output/force2vec-RW~b262144,w15/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+  - axis: 'nodeclass-tdist'
+    items:
+      - name: 'b256-citeseer-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b256,i1000/citeseer.embd', '128', 'datasets/input/citeseer.nodes.labels']
+      - name: 'b256-cora-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b256,i1000/cora.embd', '128', 'datasets/input/cora.nodes.labels']
+      - name: 'b256-flickr-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b256,i1000/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b256-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b256,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b512-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b512,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b1024-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b1024,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b2048-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b2048,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b4096-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b4096,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b4096-flickr-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b4096,i1000/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b8192-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b8192,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b16384-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b16384,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b65536-citeseer-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b65536,i1000/citeseer.embd', '128', 'datasets/input/citeseer.nodes.labels']
+      - name: 'b65536-cora-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b65536,i1000/cora.embd', '128', 'datasets/input/cora.nodes.labels']
+      - name: 'b65536-flickr-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b65536,i1000/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b65536-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b65536,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b131072-citeseer-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b131072,i1000/citeseer.embd', '128', 'datasets/input/citeseer.nodes.labels']
+      - name: 'b131072-cora-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b131072,i1000/cora.embd', '128', 'datasets/input/cora.nodes.labels']
+      - name: 'b131072-flickr-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b131072,i1000/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b131072-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b131072,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+      - name: 'b262144-citeseer-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b262144,i1000/citeseer.embd', '128', 'datasets/input/citeseer.nodes.labels']
+      - name: 'b262144-cora-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b262144,i1000/cora.embd', '128', 'datasets/input/cora.nodes.labels']
+      - name: 'b262144-flickr-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b262144,i1000/flickr.embd', '128', 'datasets/input/flickr.nodes.labels']
+      - name: 'b262144-pubmed-nc-tdist'
+        extra_args: ['output/force2vec~AVX-tdist-ns,b262144,i1000/pubmed.embd', '128', 'datasets/input/pubmed.nodes.labels']
+matrix:
+  include:
+    - experiments: [force2vec]
+      instsets: [all]
+      axes: ['option', 'iter', 'batch']
+    - experiments: [force2vec-RW]
+      instsets: [all]
+      axes: ['wl', 'batch']
+    - experiments: [linkpredict-sig-RW]
+      instsets: [citeseer]
+      axes: ['embeddings']
+      variants: ['b65536-citeseer', 'b131072-citeseer', 'b262144-citeseer']
+    - experiments: [linkpredict-sig-RW]
+      instsets: [karate]
+      axes: ['embeddings']
+      variants: ['b65536-karate', 'b131072-karate', 'b262144-karate']
+    - experiments: [linkpredict-sig-RW]
+      instsets: [cora]
+      axes: ['embeddings']
+      variants: ['b65536-cora', 'b131072-cora', 'b262144-cora']
+    - experiments: [linkpredict-sig-RW]
+      instsets: [flickr]
+      axes: ['embeddings']
+      variants: ['b65536-flickr', 'b131072-flickr', 'b262144-flickr']
+    - experiments: [linkpredict-sig-RW]
+      instsets: [pubmed]
+      axes: ['embeddings']
+      variants: ['b65536-pubmed', 'b131072-pubmed', 'b262144-pubmed']
+    - experiments: [linkpredict-sig-RW]
+      instsets: [com-Youtube]
+      axes: ['embeddings']
+      variants: ['b65536-com-Youtube', 'b131072-com-Youtube', 'b262144-com-Youtube']
+    ########
+    - experiments: [nodeclass-sig-RW]
+      instsets: [citeseer]
+      axes: ['nodeclass']
+      variants: ['b65536-citeseer-nc', 'b131072-citeseer-nc', 'b262144-citeseer-nc']
+    - experiments: [nodeclass-sig-RW]
+      instsets: [cora]
+      axes: ['nodeclass']
+      variants: ['b65536-cora-nc', 'b131072-cora-nc', 'b262144-cora-nc']
+    - experiments: [nodeclass-sig-RW]
+      instsets: [flickr]
+      axes: ['nodeclass']
+      variants: ['b256-flickr-nc', 'b4096-flickr-nc', 'b65536-flickr-nc', 'b131072-flickr-nc', 'b262144-flickr-nc']
+    - experiments: [nodeclass-sig-RW]
+      instsets: [pubmed]
+      axes: ['nodeclass']
+      variants: ['b65536-pubmed-nc', 'b131072-pubmed-nc', 'b262144-pubmed-nc']
+    ########
+    - experiments: [nodeclass-tdist]
+      instsets: [citeseer]
+      axes: ['nodeclass-tdist']
+      variants: ['b256-citeseer-nc-tdist', 'b65536-citeseer-nc-tdist', 'b131072-citeseer-nc-tdist', 'b262144-citeseer-nc-tdist']
+    - experiments: [nodeclass-tdist]
+      instsets: [cora]
+      axes: ['nodeclass-tdist']
+      variants: ['b256-cora-nc-tdist', 'b65536-cora-nc-tdist', 'b131072-cora-nc-tdist', 'b262144-cora-nc-tdist']
+    - experiments: [nodeclass-tdist]
+      instsets: [flickr]
+      axes: ['nodeclass-tdist']
+      variants: ['b256-flickr-nc-tdist', 'b4096-flickr-nc-tdist', 'b65536-flickr-nc-tdist', 'b131072-flickr-nc-tdist', 'b262144-flickr-nc-tdist']
+    - experiments: [nodeclass-tdist]
+      instsets: [pubmed]
+      axes: ['nodeclass-tdist']
+      variants: ['b256-pubmed-nc-tdist', 'b512-pubmed-nc-tdist', 'b1024-pubmed-nc-tdist', 'b2048-pubmed-nc-tdist', 'b4096-pubmed-nc-tdist', 'b8192-pubmed-nc-tdist', 'b16384-pubmed-nc-tdist', 'b65536-pubmed-nc-tdist', 'b131072-pubmed-nc-tdist', 'b262144-pubmed-nc-tdist']

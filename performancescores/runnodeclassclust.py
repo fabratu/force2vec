@@ -11,6 +11,8 @@ import networkx as nx
 from networkx.algorithms import community
 import random, math
 import numpy as np
+import networkit as nk
+
 #from networkx.algorithms.community import greedy_modularity_communities
 import warnings
 warnings.filterwarnings("ignore")
@@ -219,11 +221,13 @@ def graphReconstruction(Gx, Xm):
     print("Graph Reconstruction Accuracy (",V,"):", (totalcorrect)/(totalcorrect+totalwrong))
 
 #print(sys.argv)
-print("Reading graph!")
+#print("Reading graph!")
 filename = sys.argv[1]
-G = mmread(filename)
-graph = nx.Graph(G)
-print("Done!")
+
+#G = mmread(filename)
+#graph = nx.Graph(G)
+
+#print("Done!")
 
 #random.seed(1)
 from sklearn.linear_model import LogisticRegression
@@ -252,7 +256,7 @@ Xt, Yt, labs = makeNodeClassificationData(X, truelabfile)
 indices = np.array(range(len(Yt)))
 assert(len(indices) == len(Yt))
 onehotencode = MultiLabelBinarizer(range(labs))
-#print(X)
+print(X)
 
 ###Graph Reconstruction
 #graphReconstruction(graph, X)
@@ -308,27 +312,26 @@ for tf in trainfrac:
     f1micro = f1_score(onehotencode.fit_transform(predictedY), testY, average='micro')
     print("Multilabel-classification:", tf, "F1-macro:", f1macro, "F1-micro:",f1micro)
 
-from sklearn.cluster import KMeans
-import community as comm
-nxG = nx.Graph(G)
-bestModularity = 0
-Xt = X
-bestC = 2
-NOC = 50
-vectorMod = []
-for cls in range(2, NOC):
-    clusters = KMeans(n_clusters=cls, random_state=0).fit(Xt)
-    predG = dict()
-    for node in range(len(clusters.labels_)):
-        predG[node] = clusters.labels_[node]
-    modularity = comm.community_louvain.modularity(predG, nxG)
-    vectorMod.append(modularity)
-    if modularity > bestModularity:
-        bestModularity = modularity
-        bestC = cls
-        #print("Sofar:", bestModularity, bestC)
-print("Best Modularity:",bestModularity, "Clusters:", bestC)
-print("All Modularities:",vectorMod)
+#from sklearn.cluster import KMeans
+#import community as comm
+
+#nxG = nx.Graph(G)
+#def getClusteringQuality():
+    
+#print("Read graph: ", filename)
+#G = nk.readGraph(filename, nk.Format.NetworKitBinary)
+#print(G)
+#partition = nk.community.PLM(G, refine=True, maxIter=100).run().getPartition()
+#print("Baseline (PLM) computed.")
+#clusterIDs = partition.getSubsetIds()
+
+#totalDist = np.float(0.0)
+#for id in clusterIDs:
+#    member = partition.getMembers(id)
+#    for i in range(0, len(member)):
+#        for j in range(i+1, len(member)):
+#            totalDist += np.linalg.norm(X[member[i]]-X[member[j]])
+#print("Total dist")
 '''
 print("Making link prediction")
 Xt, Yt = makeLinkPredictionData(graph, X)
